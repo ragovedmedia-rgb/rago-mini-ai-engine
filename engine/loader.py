@@ -1,14 +1,17 @@
-import importlib
+import json
 import os
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-
 def load_tool(category, tool):
-    module_path = f"categories.{category}.{tool}.main"
+    base_path = os.path.join("categories", category, tool)
+    tool_json = os.path.join(base_path, "tool.json")
 
-    try:
-        module = importlib.import_module(module_path)
-        return module
-    except Exception as e:
-        raise Exception(f"Tool load failed: {str(e)}")
+    if not os.path.exists(tool_json):
+        return {"error": "Tool not found"}
 
+    with open(tool_json, "r") as f:
+        tool_config = json.load(f)
+
+    return {
+        "status": "loaded",
+        "tool": tool_config
+    }
