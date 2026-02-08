@@ -1,22 +1,27 @@
+from flask import Flask, request, jsonify
 from engine.loader import load_tool
+
+app = Flask(__name__)
+
+@app.route("/", methods=["GET"])
+def home():
+    return jsonify({
+        "status": "Rago Mini AI Engine running",
+        "endpoints": ["/run"]
+    })
 
 @app.route("/run", methods=["POST"])
 def run_tool():
-    data = request.json or {}
+    data = request.json
+
     category = data.get("category")
     tool = data.get("tool")
 
-    if not category or not tool:
-        return jsonify({"error": "category and tool required"}), 400
+    result = load_tool(category, tool)
 
-    try:
-        tool_module = load_tool(category, tool)
+    return jsonify({
+        "result": result
+    })
 
-        if not hasattr(tool_module, "run"):
-            return jsonify({"error": "Tool has no run()"}), 500
-
-        result = tool_module.run(data)
-        return jsonify({"result": result})
-
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
