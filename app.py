@@ -55,7 +55,7 @@ def run_tool():
             }), 400
 
         # Execute tool
-        result = load_tool(category, tool)
+        result = load_tool(category, tool, data)
 
         # Ensure proper JSON response
         if isinstance(result, dict):
