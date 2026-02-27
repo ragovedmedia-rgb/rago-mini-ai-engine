@@ -1,86 +1,62 @@
-import base64
 import numpy as np
-from PIL import Image
-from io import BytesIO
-import os
-import uuid
 
 
-# ===============================
-# SAFE BASE64 TO NUMPY
-# ===============================
-def base64_to_array(data):
-    try:
-        if not data or "," not in data:
-            raise ValueError("Invalid base64 image data")
-
-        header, encoded = data.split(",", 1)
-        img_bytes = base64.b64decode(encoded)
-        img = Image.open(BytesIO(img_bytes)).convert("RGB")
-
-        return np.array(img) / 255.0
-
-    except Exception as e:
-        raise Exception(f"Image decode failed: {str(e)}")
+def apply_exposure(r, g, b, value):
+    return r + value, g + value, b + value
 
 
-# ===============================
-# LUT GENERATOR
-# ===============================
-def generate_lut(source_b64, reference_b64, intensity, size):
+def apply_contrast(r, g, b, value):
+    r = (r - 0.5) * (1 + value) + 0.5
+    g = (g - 0.5) * (1 + value) + 0.5
+    b = (b - 0.5) * (1 + value) + 0.5
+    return r, g, b
 
-    try:
-        # Validate inputs
-        if not source_b64 or not reference_b64:
-            raise ValueError("Source or Reference image missing")
 
-        size = int(size)
-        if size < 2 or size > 65:
-            raise ValueError("Invalid LUT size (2-65 allowed)")
+def apply_temperature(r, g, b, value):
+    r += value * 0.1
+    b -= value * 0.1
+    return r, g, b
 
-        intensity = float(intensity)
 
-        # Convert images
-        src = base64_to_array(source_b64)
-        ref = base64_to_array(reference_b64)
+def apply_tint(r, g, b, value):
+    g += value * 0.1
+    return r, g, b
 
-        # Compute color shift
-        src_mean = src.mean(axis=(0, 1))
-        ref_mean = ref.mean(axis=(0, 1))
-        shift = (ref_mean - src_mean) * intensity
 
-        # Generate LUT content
-        lines = []
-        lines.append('TITLE "RagoAI Generated LUT"')
-        lines.append(f"LUT_3D_SIZE {size}")
+def apply_saturation(r, g, b, value):
+    avg = (r + g + b) / 3
+    r = avg + (r - avg) * (1 + value)
+    g = avg + (g - avg) * (1 + value)
+    b = avg + (b - avg) * (1 + value)
+    return r, g, b
 
-        for b in np.linspace(0, 1, size):
-            for g in np.linspace(0, 1, size):
-                for r in np.linspace(0, 1, size):
-                    rr = np.clip(r + shift[0], 0, 1)
-                    gg = np.clip(g + shift[1], 0, 1)
-                    bb = np.clip(b + shift[2], 0, 1)
-                    lines.append(f"{rr:.6f} {gg:.6f} {bb:.6f}")
 
-        # Ensure folder exists
-        output_dir = os.path.join("storage", "luts")
-        os.makedirs(output_dir, exist_ok=True)
+def build_lut(sliders, size):
 
-        # Unique filename (important for production)
-        filename = f"generated_{size}_{uuid.uuid4().hex[:8]}.cube"
-        file_path = os.path.join(output_dir, filename)
+    exposure = sliders.get("exposure", 0) / 100.0
+    contrast = sliders.get("contrast", 0) / 100.0
+    saturation = sliders.get("saturation", 0) / 100.0
+    temperature = sliders.get("temperature", 0) / 100.0
+    tint = sliders.get("tint", 0) / 100.0
 
-        # Write file
-        with open(file_path, "w") as f:
-            f.write("\n".join(lines))
+    lut = []
 
-        return {
-            "success": True,
-            "lut_path": file_path
-        }
+    for b in np.linspace(0, 1, size):
+        for g in np.linspace(0, 1, size):
+            for r in np.linspace(0, 1, size):
 
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+                rr, gg, bb = r, g, b
+
+                rr, gg, bb = apply_exposure(rr, gg, bb, exposure)
+                rr, gg, bb = apply_contrast(rr, gg, bb, contrast)
+                rr, gg, bb = apply_temperature(rr, gg, bb, temperature)
+                rr, gg, bb = apply_tint(rr, gg, bb, tint)
+                rr, gg, bb = apply_saturation(rr, gg, bb, saturation)
+
+                rr = np.clip(rr, 0, 1)
+                gg = np.clip(gg, 0, 1)
+                bb = np.clip(bb, 0, 1)
+
+                lut.append((rr, gg, bb))
+
+    return lut
