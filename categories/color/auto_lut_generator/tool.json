@@ -1,6 +1,8 @@
 {
   "slug": "auto_lut_generator",
   "name": "Auto LUT Generator",
+  "route": "/process",
+  "plan_required": "free",
   "version": "1.0",
   "description": "Generate LUT from reference image"
 }
