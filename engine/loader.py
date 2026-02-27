@@ -1,23 +1,23 @@
-import importlib.util
-import os
+import importlib
 
 def load_tool(category, tool, data):
 
-    base_path = os.path.join("categories", category, tool)
-    main_file = os.path.join(base_path, "main.py")
-
-    if not os.path.exists(main_file):
-        return {"success": False, "error": "Tool main.py not found"}
-
     try:
-        spec = importlib.util.spec_from_file_location("tool_main", main_file)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
+        # Build module path properly
+        module_path = f"categories.{category}.{tool}.main"
+
+        module = importlib.import_module(module_path)
 
         if hasattr(module, "run"):
             return module.run(data)
         else:
-            return {"success": False, "error": "run() not found in tool"}
+            return {
+                "success": False,
+                "error": "run() not found in tool"
+            }
 
     except Exception as e:
-        return {"success": False, "error": str(e)}
+        return {
+            "success": False,
+            "error": str(e)
+        }
