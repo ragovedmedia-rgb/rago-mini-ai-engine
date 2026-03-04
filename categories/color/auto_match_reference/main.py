@@ -1,4 +1,4 @@
-from .matcher import auto_match
+from .auto_match import auto_match
 
 def run(data):
 
@@ -8,7 +8,7 @@ def run(data):
     if not reference or not source:
         return {
             "success": False,
-            "error": "Missing frames"
+            "error": "Missing reference or source frame"
         }
 
     sliders = auto_match(reference, source)
