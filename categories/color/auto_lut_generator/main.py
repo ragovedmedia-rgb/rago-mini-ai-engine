@@ -16,7 +16,9 @@ def run(data):
     sliders = data.get("sliders")
     size = int(data.get("lut_size", 33))
 
-    lut_data = build_lut(sliders, size)
+    wheels = data.get("wheels", [])
+
+lut_data = build_lut(sliders, wheels, size)
 
     filename = save_cube(lut_data, size)
 
