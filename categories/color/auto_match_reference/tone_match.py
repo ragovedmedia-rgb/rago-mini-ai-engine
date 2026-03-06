@@ -10,17 +10,22 @@ def solve_tone(ref_img, src_img):
     src_l = src_lab[:, :, 0].astype("float32")
     ref_l = ref_lab[:, :, 0].astype("float32")
 
-    # percentile tone points
+    # Percentile tone points
     src_p = np.percentile(src_l, [5, 25, 50, 75, 95])
     ref_p = np.percentile(ref_l, [5, 25, 50, 75, 95])
 
-    # build tone curve
-    curve = np.interp(src_l.flatten(), src_p, ref_p)
+    # tone difference
+    tone_shift = ref_p - src_p
 
-    tone_mapped = curve.reshape(src_l.shape)
+    shadow_shift = tone_shift[0]
+    midtone_shift = tone_shift[2]
+    highlight_shift = tone_shift[4]
 
-    src_lab[:, :, 0] = tone_mapped
+    contrast_shift = (ref_p[4] - ref_p[0]) - (src_p[4] - src_p[0])
 
-    result = cv2.cvtColor(src_lab.astype("uint8"), cv2.COLOR_LAB2BGR)
-
-    return result
+    return {
+        "shadow": float(shadow_shift),
+        "mid": float(midtone_shift),
+        "highlight": float(highlight_shift),
+        "contrast": float(contrast_shift)
+    }
