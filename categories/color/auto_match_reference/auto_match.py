@@ -3,6 +3,9 @@ from PIL import Image
 import base64
 import io
 
+# IMPORT REAL COLOR TRANSFER ENGINE
+from .color_transfer import color_transfer
+
 
 # ==============================
 # BASE64 IMAGE → NUMPY
@@ -61,9 +64,13 @@ def analyze_image(img):
 
 def auto_match(reference_base64, source_base64):
 
+    # Decode images
     ref_img = decode_base64_image(reference_base64)
-    src_img = decode_base64_image(source_base64)
 
+    # Apply LAB color transfer from reference → source
+    src_img = color_transfer(reference_base64, source_base64)
+
+    # Analyze images
     ref = analyze_image(ref_img)
     src = analyze_image(src_img)
 
@@ -92,8 +99,8 @@ def auto_match(reference_base64, source_base64):
     sliders["temperature"] = float(np.clip(temp, -100, 100))
 
     # TINT
-    ref_tint = ref["mid"][1] - (ref["mid"][0]+ref["mid"][2])/2
-    src_tint = src["mid"][1] - (src["mid"][0]+src["mid"][2])/2
+    ref_tint = ref["mid"][1] - (ref["mid"][0] + ref["mid"][2]) / 2
+    src_tint = src["mid"][1] - (src["mid"][0] + src["mid"][2]) / 2
 
     tint = (src_tint - ref_tint) * 120
     sliders["tint"] = float(np.clip(tint, -100, 100))
