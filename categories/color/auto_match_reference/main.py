@@ -5,6 +5,7 @@ from .level_match import solve_levels
 from .color_match import solve_color
 from .tone_match import solve_tone
 from .slider_solver import build_sliders
+from .color_wheel_solver import solve_color_wheels
 
 
 def run(data):
