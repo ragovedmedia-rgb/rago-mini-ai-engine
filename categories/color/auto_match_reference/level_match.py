@@ -4,34 +4,32 @@ import numpy as np
 def level_match(ref, src):
 
     # -----------------------------
-    # Black point match
+    # Black point alignment
     # -----------------------------
-    black_shift = (ref["black"] - src["black"]) * 0.08
+
+    black_shift = ref["black"] - src["black"]
 
     # -----------------------------
-    # White point match
+    # White point alignment
     # -----------------------------
-    white_shift = (ref["white"] - src["white"]) * 0.08
+
+    white_shift = ref["white"] - src["white"]
 
     # -----------------------------
-    # Gamma / midtone match
+    # Midtone gamma solve
     # -----------------------------
-    gamma = (ref["mid"] - src["mid"]) * 0.04
+
+    gamma = (ref["mid"] / (src["mid"] + 1e-6))
 
     # -----------------------------
-    # Contrast solve
+    # Contrast difference
     # -----------------------------
-    contrast = (ref["contrast"] - src["contrast"]) * 0.06
 
-    # -----------------------------
-    # Exposure
-    # -----------------------------
-    exposure = (ref["brightness"] - src["brightness"]) * 0.05
+    contrast = (ref["contrast"] - src["contrast"]) * 0.05
 
     return {
         "black_shift": float(black_shift),
         "white_shift": float(white_shift),
         "gamma": float(gamma),
-        "contrast": float(contrast),
-        "exposure": float(exposure)
+        "contrast": float(contrast)
     }
