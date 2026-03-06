@@ -1,21 +1,26 @@
+import cv2
 import numpy as np
-from .utils import compute_luma
 
-def solve_tone(ref_img, src_img):
 
-    ref_luma = compute_luma(ref_img)
-    src_luma = compute_luma(src_img)
+def tone_match(src_img, ref_img):
 
-    shadow_ref = np.mean(ref_luma[ref_luma < 85])
-    shadow_src = np.mean(src_luma[src_luma < 85])
+    src_lab = cv2.cvtColor(src_img, cv2.COLOR_BGR2LAB)
+    ref_lab = cv2.cvtColor(ref_img, cv2.COLOR_BGR2LAB)
 
-    highlight_ref = np.mean(ref_luma[ref_luma > 170])
-    highlight_src = np.mean(src_luma[src_luma > 170])
+    src_l = src_lab[:,:,0].astype("float32")
+    ref_l = ref_lab[:,:,0].astype("float32")
 
-    shadow_shift = (shadow_ref - shadow_src) / 255
-    highlight_shift = (highlight_ref - highlight_src) / 255
+    # Percentile points
+    src_p = np.percentile(src_l, [5,25,50,75,95])
+    ref_p = np.percentile(ref_l, [5,25,50,75,95])
 
-    return {
-        "shadow_shift": float(shadow_shift),
-        "highlight_shift": float(highlight_shift)
-    }
+    # Tone curve mapping
+    curve = np.interp(src_l.flatten(), src_p, ref_p)
+
+    tone_mapped = curve.reshape(src_l.shape)
+
+    src_lab[:,:,0] = tone_mapped
+
+    result = cv2.cvtColor(src_lab.astype("uint8"), cv2.COLOR_LAB2BGR)
+
+    return result
