@@ -1,34 +1,46 @@
 import cv2
 import numpy as np
+import base64
 
-def accurate_color_match(source, reference):
+def decode_image(data):
 
-    src = cv2.cvtColor(source, cv2.COLOR_BGR2LAB).astype("float32")
-    ref = cv2.cvtColor(reference, cv2.COLOR_BGR2LAB).astype("float32")
+    header, encoded = data.split(",", 1)
+    img_bytes = base64.b64decode(encoded)
 
-    l_s, a_s, b_s = cv2.split(src)
-    l_r, a_r, b_r = cv2.split(ref)
+    np_arr = np.frombuffer(img_bytes, np.uint8)
 
-    # mean/std
-    l_s_mean, l_s_std = l_s.mean(), l_s.std()
-    a_s_mean, a_s_std = a_s.mean(), a_s.std()
-    b_s_mean, b_s_std = b_s.mean(), b_s.std()
+    img = cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
 
-    l_r_mean, l_r_std = l_r.mean(), l_r.std()
-    a_r_mean, a_r_std = a_r.mean(), a_r.std()
-    b_r_mean, b_r_std = b_r.mean(), b_r.std()
+    return img
 
-    # luminance protection
-    l = (l_s - l_s_mean) * (l_r_std / (l_s_std + 1e-6)) + l_r_mean
-    l = 0.6 * l + 0.4 * l_s
 
-    # chroma transfer
-    a = (a_s - a_s_mean) * (a_r_std / (a_s_std + 1e-6)) + a_r_mean
-    b = (b_s - b_s_mean) * (b_r_std / (b_s_std + 1e-6)) + b_r_mean
+def accurate_color_match(reference, source):
 
-    merged = cv2.merge([l, a, b])
-    merged = np.clip(merged, 0, 255).astype("uint8")
+    ref = decode_image(reference)
+    src = decode_image(source)
 
-    result = cv2.cvtColor(merged, cv2.COLOR_LAB2BGR)
+    ref_lab = cv2.cvtColor(ref, cv2.COLOR_BGR2LAB).astype("float32")
+    src_lab = cv2.cvtColor(src, cv2.COLOR_BGR2LAB).astype("float32")
 
-    return result
+    l_s, a_s, b_s = cv2.split(src_lab)
+    l_r, a_r, b_r = cv2.split(ref_lab)
+
+    # means
+    l_s_mean, a_s_mean, b_s_mean = l_s.mean(), a_s.mean(), b_s.mean()
+    l_r_mean, a_r_mean, b_r_mean = l_r.mean(), a_r.mean(), b_r.mean()
+
+    # slider estimation
+    exposure = (l_r_mean - l_s_mean) / 100
+    saturation = ((abs(a_r_mean) + abs(b_r_mean)) -
+                  (abs(a_s_mean) + abs(b_s_mean))) / 100
+
+    temperature = (b_r_mean - b_s_mean)
+    tint = (a_r_mean - a_s_mean)
+
+    return {
+        "exposure": float(exposure),
+        "contrast": 0,
+        "saturation": float(saturation),
+        "temperature": float(temperature),
+        "tint": float(tint)
+    }
