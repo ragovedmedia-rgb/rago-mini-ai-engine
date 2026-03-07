@@ -6,7 +6,7 @@ def clamp(v, limit=100):
     return float(max(-limit, min(limit, v)))
 
 
-def solve_sliders(ref, src, palette):
+def build_sliders(ref, src, palette):
 
     # -----------------------------
     # Exposure
