@@ -23,93 +23,100 @@ from .color_wheel_solver import solve_color_wheels
 
 def run(data):
 
-    # ----------------------------------------
-    # 1. Get reference and source images
-    # ----------------------------------------
+    try:
 
-    reference = data.get("reference")
-    source = data.get("source")
+        # ----------------------------------------
+        # 1. Get reference and source images
+        # ----------------------------------------
 
-    if not reference or not source:
+        reference = data.get("reference")
+        source = data.get("source")
+
+        if not reference or not source:
+            return {
+                "success": False,
+                "error": "Missing reference or source frame"
+            }
+
+        # ----------------------------------------
+        # 2. Decode Base64 images → numpy arrays
+        # ----------------------------------------
+
+        ref_img = decode_base64_image(reference)
+        src_img = decode_base64_image(source)
+
+        if ref_img is None or src_img is None:
+            return {
+                "success": False,
+                "error": "Image decode failed"
+            }
+
+        # ----------------------------------------
+        # 3. Analyze images (color statistics)
+        # ----------------------------------------
+        # Extract brightness, contrast,
+        # temperature, tint, saturation etc.
+
+        ref_stats = analyze_reference(ref_img)
+        src_stats = analyze_source(src_img)
+
+        # ----------------------------------------
+        # 4. Solve level differences
+        # ----------------------------------------
+        # Aligns black / white / gamma / contrast
+
+        level_data = solve_levels(ref_stats, src_stats)
+
+        # ----------------------------------------
+        # 5. Solve color differences
+        # ----------------------------------------
+        # Align temperature / tint / saturation
+
+        color_data = solve_color(ref_img, src_img)
+
+        # ----------------------------------------
+        # 6. Solve tone differences
+        # ----------------------------------------
+        # Align shadow / mid / highlight curve
+
+        tone_data = solve_tone(ref_img, src_img)
+
+        # ----------------------------------------
+        # 7. Palette harmony match
+        # ----------------------------------------
+        # Dominant color shift
+
+        palette_data = solve_palette(ref_img, src_img)
+
+        # ----------------------------------------
+        # 8. Build grading sliders
+        # ----------------------------------------
+
+        sliders = build_sliders(ref_stats, src_stats, palette_data)
+
+        # ----------------------------------------
+        # 9. Solve Lift / Gamma / Gain wheels
+        # ----------------------------------------
+
+        wheels = solve_color_wheels(ref_img, src_img)
+
+        # ----------------------------------------
+        # 10. Return final grading data
+        # ----------------------------------------
+
         return {
-            "success": False,
-            "error": "Missing reference or source frame"
+            "success": True,
+            "sliders": sliders,
+            "wheels": wheels
         }
 
-    # ----------------------------------------
-    # 2. Decode Base64 images → numpy arrays
-    # ----------------------------------------
+    except Exception as e:
 
-    ref_img = decode_base64_image(reference)
-    src_img = decode_base64_image(source)
+        # ----------------------------------------
+        # Global safety catch
+        # ----------------------------------------
 
-    # ----------------------------------------
-    # 3. Analyze images (color statistics)
-    # ----------------------------------------
-    # This extracts brightness, contrast,
-    # temperature, tint, saturation etc.
-
-    ref_stats = analyze_reference(ref_img)
-    src_stats = analyze_source(src_img)
-
-    # ----------------------------------------
-    # 4. Solve level differences
-    # ----------------------------------------
-    # Aligns:
-    # black point
-    # white point
-    # gamma
-    # contrast
-
-    level_data = solve_levels(ref_stats, src_stats)
-
-    # ----------------------------------------
-    # 5. Solve color differences
-    # ----------------------------------------
-    # Aligns:
-    # temperature
-    # tint
-    # saturation
-
-    color_data = solve_color(ref_img, src_img)
-
-    # ----------------------------------------
-    # 6. Solve tone differences
-    # ----------------------------------------
-    # Aligns shadow/mid/highlight tone curve
-
-    tone_data = solve_tone(ref_img, src_img)
-
-    # ----------------------------------------
-    # 7. Palette harmony match
-    # ----------------------------------------
-    # Detect dominant colors
-    # Match cinematic palette
-
-    palette_data = solve_palette(ref_img, src_img)
-
-    # ----------------------------------------
-    # 8. Build grading sliders
-    # ----------------------------------------
-    # Converts analysis data into
-    # UI slider values
-
-    sliders = build_sliders(ref_stats, src_stats, palette_data)
-
-    # ----------------------------------------
-    # 9. Solve Lift / Gamma / Gain wheels
-    # ----------------------------------------
-    # Color wheels adjust
-    # shadows / mids / highlights
-
-    wheels = solve_color_wheels(ref_img, src_img)
-
-    # ----------------------------------------
-    # 10. Return final grading data
-    # ----------------------------------------
-
-    return {
-        "success": True,
-        "sliders": sliders,
-        "wheels": wheels
-    }
+        return {
+            "success": False,
+            "error": str(e)
+        }
