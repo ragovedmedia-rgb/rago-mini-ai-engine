@@ -101,16 +101,23 @@ def run(data):
         wheels = solve_color_wheels(ref_img, src_img)
 
         # ----------------------------------------
-        # 10. Return final grading data
-        # ----------------------------------------
+# 10. Return final grading data
+# ----------------------------------------
 
-        return {
-            "success": True,
-            "sliders": sliders,
-            "wheels": wheels
-        }
+debug_mode = data.get("debug", False)
 
-    except Exception as e:
+response = {
+    "success": True,
+    "sliders": sliders,
+    "wheels": wheels
+}
+
+# Debug mode: include analysis stats
+if debug_mode:
+    response["reference_stats"] = ref_stats
+    response["source_stats"] = src_stats
+
+return response
 
         # ----------------------------------------
         # Global safety catch
