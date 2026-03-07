@@ -1,14 +1,31 @@
+# ----------------------------------------
+# RAGO AI - AUTO MATCH ENGINE
+# Main entry point for auto_match_reference
+# ----------------------------------------
+
+# Image decode helper
 from .utils import decode_base64_image
+
+# Image analyzers
 from .analyzer_reference import analyze_reference
 from .analyzer_source import analyze_source
+
+# Solvers
 from .level_match import solve_levels
 from .color_match import solve_color
 from .tone_match import solve_tone
+from .palette_match import solve_palette
+
+# Slider & wheel builders
 from .slider_solver import build_sliders
 from .color_wheel_solver import solve_color_wheels
 
 
 def run(data):
+
+    # ----------------------------------------
+    # 1. Get reference and source images
+    # ----------------------------------------
 
     reference = data.get("reference")
     source = data.get("source")
@@ -20,51 +37,75 @@ def run(data):
         }
 
     # ----------------------------------------
-    # Decode images
+    # 2. Decode Base64 images → numpy arrays
     # ----------------------------------------
 
     ref_img = decode_base64_image(reference)
     src_img = decode_base64_image(source)
 
     # ----------------------------------------
-    # Analyze reference and source
+    # 3. Analyze images (color statistics)
     # ----------------------------------------
+    # This extracts brightness, contrast,
+    # temperature, tint, saturation etc.
 
     ref_stats = analyze_reference(ref_img)
     src_stats = analyze_source(src_img)
 
     # ----------------------------------------
-    # Level matching (black / white / gamma)
+    # 4. Solve level differences
     # ----------------------------------------
+    # Aligns:
+    # black point
+    # white point
+    # gamma
+    # contrast
 
     level_data = solve_levels(ref_stats, src_stats)
 
     # ----------------------------------------
-    # Color matching (temperature / tint / sat)
+    # 5. Solve color differences
     # ----------------------------------------
+    # Aligns:
+    # temperature
+    # tint
+    # saturation
 
     color_data = solve_color(ref_img, src_img)
 
     # ----------------------------------------
-    # Tone matching (curve alignment)
+    # 6. Solve tone differences
     # ----------------------------------------
+    # Aligns shadow/mid/highlight tone curve
 
     tone_data = solve_tone(ref_img, src_img)
 
     # ----------------------------------------
-    # Build sliders
+    # 7. Palette harmony match
     # ----------------------------------------
+    # Detect dominant colors
+    # Match cinematic palette
 
-    sliders = build_sliders(level_data, color_data, tone_data)
+    palette_data = solve_palette(ref_img, src_img)
 
     # ----------------------------------------
-    # NEW: Solve Lift / Gamma / Gain wheels
+    # 8. Build grading sliders
     # ----------------------------------------
+    # Converts analysis data into
+    # UI slider values
+
+    sliders = build_sliders(ref_stats, src_stats, palette_data)
+
+    # ----------------------------------------
+    # 9. Solve Lift / Gamma / Gain wheels
+    # ----------------------------------------
+    # Color wheels adjust
+    # shadows / mids / highlights
 
     wheels = solve_color_wheels(ref_img, src_img)
 
     # ----------------------------------------
-    # Final response
+    # 10. Return final grading data
     # ----------------------------------------
 
     return {
