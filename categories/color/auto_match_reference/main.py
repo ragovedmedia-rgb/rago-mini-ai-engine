@@ -54,8 +54,6 @@ def run(data):
         # ----------------------------------------
         # 3. Analyze images (color statistics)
         # ----------------------------------------
-        # Extract brightness, contrast,
-        # temperature, tint, saturation etc.
 
         ref_stats = analyze_reference(ref_img)
         src_stats = analyze_source(src_img)
@@ -63,28 +61,24 @@ def run(data):
         # ----------------------------------------
         # 4. Solve level differences
         # ----------------------------------------
-        # Aligns black / white / gamma / contrast
 
         level_data = solve_levels(ref_stats, src_stats)
 
         # ----------------------------------------
         # 5. Solve color differences
         # ----------------------------------------
-        # Align temperature / tint / saturation
 
         color_data = solve_color(ref_img, src_img)
 
         # ----------------------------------------
         # 6. Solve tone differences
         # ----------------------------------------
-        # Align shadow / mid / highlight curve
 
         tone_data = solve_tone(ref_img, src_img)
 
         # ----------------------------------------
         # 7. Palette harmony match
         # ----------------------------------------
-        # Dominant color shift
 
         palette_data = solve_palette(ref_img, src_img)
 
@@ -101,27 +95,29 @@ def run(data):
         wheels = solve_color_wheels(ref_img, src_img)
 
         # ----------------------------------------
-# 10. Return final grading data
-# ----------------------------------------
-
-debug_mode = data.get("debug", False)
-
-response = {
-    "success": True,
-    "sliders": sliders,
-    "wheels": wheels
-}
-
-# Debug mode: include analysis stats
-if debug_mode:
-    response["reference_stats"] = ref_stats
-    response["source_stats"] = src_stats
-
-return response
-
+        # 10. Return final grading data
         # ----------------------------------------
-        # Global safety catch
-        # ----------------------------------------
+
+        debug_mode = data.get("debug", False)
+
+        response = {
+            "success": True,
+            "sliders": sliders,
+            "wheels": wheels
+        }
+
+        # Debug mode: include analysis stats
+        if debug_mode:
+            response["reference_stats"] = ref_stats
+            response["source_stats"] = src_stats
+
+        return response
+
+    # ----------------------------------------
+    # Global safety catch
+    # ----------------------------------------
+
+    except Exception as e:
 
         return {
             "success": False,
