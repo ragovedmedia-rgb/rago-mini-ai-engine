@@ -37,17 +37,28 @@ def build_sliders(ref, src, palette):
 
     exposure = exp_diff + exp_ratio
 
+   
     # -----------------------------
-    # Contrast (range + stat)
-    # -----------------------------
+# Contrast (dynamic range based)
+# -----------------------------
 
-    contrast_diff = (ref_contrast - src_contrast) * 0.4
+src_black = src.get("black", 0.0)
+src_white = src.get("white", 255.0)
 
-    contrast_ratio = (ref_contrast / (src_contrast + 1e-6)) - 1
-    contrast_ratio *= 0.6
+ref_black = ref.get("black", 0.0)
+ref_white = ref.get("white", 255.0)
 
-    contrast = contrast_diff + contrast_ratio
+src_range = src_white - src_black
+ref_range = ref_white - ref_black
 
+if src_range < 1e-6:
+    contrast = 0
+else:
+    contrast = (ref_range / src_range) - 1
+
+contrast += (ref_contrast - src_contrast) * 0.2
+
+contrast = np.clip(contrast * 1.2, -1.5, 1.5)
     # -----------------------------
     # Saturation (strong solver)
     # -----------------------------
