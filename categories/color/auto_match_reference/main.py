@@ -6,6 +6,9 @@
 # Image decode helper
 from .utils import decode_base64_image
 
+# Log → Linear conversion
+from .log_linear import prepare_for_analysis
+
 # Image analyzers
 from .analyzer_reference import analyze_reference
 from .analyzer_source import analyze_source
@@ -52,50 +55,58 @@ def run(data):
             }
 
         # ----------------------------------------
-        # 3. Analyze images (color statistics)
+        # 3. Convert images to linear light
+        # (Log/Gamma → Linear normalization)
+        # ----------------------------------------
+
+        ref_img = prepare_for_analysis(ref_img)
+        src_img = prepare_for_analysis(src_img)
+
+        # ----------------------------------------
+        # 4. Analyze images (color statistics)
         # ----------------------------------------
 
         ref_stats = analyze_reference(ref_img)
         src_stats = analyze_source(src_img)
 
         # ----------------------------------------
-        # 4. Solve level differences
+        # 5. Solve level differences
         # ----------------------------------------
 
         level_data = solve_levels(ref_stats, src_stats)
 
         # ----------------------------------------
-        # 5. Solve color differences
+        # 6. Solve color differences
         # ----------------------------------------
 
         color_data = solve_color(ref_img, src_img)
 
         # ----------------------------------------
-        # 6. Solve tone differences
+        # 7. Solve tone differences
         # ----------------------------------------
 
         tone_data = solve_tone(ref_img, src_img)
 
         # ----------------------------------------
-        # 7. Palette harmony match
+        # 8. Palette harmony match
         # ----------------------------------------
 
         palette_data = solve_palette(ref_img, src_img)
 
         # ----------------------------------------
-        # 8. Build grading sliders
+        # 9. Build grading sliders
         # ----------------------------------------
 
         sliders = build_sliders(ref_stats, src_stats, palette_data)
 
         # ----------------------------------------
-        # 9. Solve Lift / Gamma / Gain wheels
+        # 10. Solve Lift / Gamma / Gain wheels
         # ----------------------------------------
 
         wheels = solve_color_wheels(ref_img, src_img)
 
         # ----------------------------------------
-        # 10. Return final grading data
+        # 11. Return final grading data
         # ----------------------------------------
 
         debug_mode = data.get("debug", False)
@@ -110,6 +121,10 @@ def run(data):
         if debug_mode:
             response["reference_stats"] = ref_stats
             response["source_stats"] = src_stats
+            response["levels"] = level_data
+            response["color"] = color_data
+            response["tone"] = tone_data
+            response["palette"] = palette_data
 
         return response
 
