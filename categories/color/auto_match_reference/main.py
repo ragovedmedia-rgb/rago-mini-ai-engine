@@ -9,6 +9,9 @@ from .utils import decode_base64_image
 # Log → Linear conversion
 from .log_linear import prepare_for_analysis
 
+# Color transfer (look matching)
+from .color_transfer import color_transfer
+
 # Image analyzers
 from .analyzer_reference import analyze_reference
 from .analyzer_source import analyze_source
@@ -63,50 +66,66 @@ def run(data):
         src_img = prepare_for_analysis(src_img)
 
         # ----------------------------------------
-        # 4. Analyze images (color statistics)
+        # 4. Apply color transfer
+        # (Reference look → Source image)
+        # ----------------------------------------
+
+        try:
+            matched_img = color_transfer(reference, source)
+
+            # color_transfer may return normalized image
+            if matched_img is not None:
+                src_img = matched_img
+
+        except Exception:
+            # If transfer fails, continue with original image
+            pass
+
+        # ----------------------------------------
+        # 5. Analyze images (color statistics)
         # ----------------------------------------
 
         ref_stats = analyze_reference(ref_img)
         src_stats = analyze_source(src_img)
 
         # ----------------------------------------
-        # 5. Solve level differences
+        # 6. Solve level differences
         # ----------------------------------------
 
         level_data = solve_levels(ref_stats, src_stats)
 
         # ----------------------------------------
-        # 6. Solve color differences
+        # 7. Solve color differences
         # ----------------------------------------
 
         color_data = solve_color(ref_img, src_img)
 
         # ----------------------------------------
-        # 7. Solve tone differences
+        # 8. Solve tone differences
         # ----------------------------------------
 
         tone_data = solve_tone(ref_img, src_img)
 
         # ----------------------------------------
-        # 8. Palette harmony match
+        # 9. Palette harmony match
         # ----------------------------------------
 
         palette_data = solve_palette(ref_img, src_img)
 
         # ----------------------------------------
-        # 9. Build grading sliders
+        # 10. Build grading sliders
         # ----------------------------------------
 
         sliders = build_sliders(ref_stats, src_stats, palette_data)
 
         # ----------------------------------------
-        # 10. Solve Lift / Gamma / Gain wheels
+        # 11. Solve Lift / Gamma / Gain wheels
         # ----------------------------------------
 
         wheels = solve_color_wheels(ref_img, src_img)
 
         # ----------------------------------------
-        # 11. Return final grading data
+        # 12. Return final grading data
         # ----------------------------------------
 
         debug_mode = data.get("debug", False)
