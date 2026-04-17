@@ -57,12 +57,30 @@ def run(data):
         src_mean = cv2.mean(src_lab)[:3]
 
         # ===============================
-        # SIMPLE COLOR MATCH LOGIC
-        # ===============================
+# ADVANCED COLOR MATCH (STD + MEAN)
+# ===============================
 
-        exposure = (ref_mean[0] - src_mean[0]) * 0.5
-        contrast = (ref_mean[1] - src_mean[1]) * 0.3
-        saturation = (ref_mean[2] - src_mean[2]) * 0.3
+ref_std = np.std(ref_lab, axis=(0,1))
+src_std = np.std(src_lab, axis=(0,1))
+
+# Avoid divide by zero
+src_std = np.where(src_std == 0, 1, src_std)
+
+# Apply color transfer
+result_lab = (src_lab - src_mean) * (ref_std / src_std) + ref_mean
+
+# Clip values
+result_lab = np.clip(result_lab, 0, 255).astype(np.uint8)
+
+# ===============================
+# CALCULATE SLIDERS FROM RESULT
+# ===============================
+
+diff = cv2.mean(result_lab.astype(np.float32) - src_lab.astype(np.float32))
+
+exposure = diff[0] * 0.4
+contrast = diff[1] * 0.3
+saturation = diff[2] * 0.3
 
         sliders = {
             "exposure": float(exposure),
