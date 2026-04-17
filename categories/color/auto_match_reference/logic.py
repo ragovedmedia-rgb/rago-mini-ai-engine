@@ -36,51 +36,76 @@ def run(data):
             }
 
         # ===============================
-        # MATCH IMAGE SIZE
+        # MATCH SIZE (CRITICAL FIX)
         # ===============================
 
         h, w = src_img.shape[:2]
         ref_img = cv2.resize(ref_img, (w, h))
 
         # ===============================
-        # CONVERT TO LAB COLOR SPACE
+        # CONVERT TO LAB
         # ===============================
 
         ref_lab = cv2.cvtColor(ref_img, cv2.COLOR_BGR2LAB)
         src_lab = cv2.cvtColor(src_img, cv2.COLOR_BGR2LAB)
 
         # ===============================
-        # CALCULATE COLOR STATISTICS
+        # SPLIT LUMA ZONES (🔥 MAIN FIX)
         # ===============================
 
-        ref_mean = cv2.mean(ref_lab)[:3]
-        src_mean = cv2.mean(src_lab)[:3]
+        src_l = src_lab[:, :, 0]
+
+        shadow_mask = src_l < 85
+        mid_mask = (src_l >= 85) & (src_l <= 170)
+        highlight_mask = src_l > 170
+
+        result_lab = src_lab.copy().astype(np.float32)
+
+        def match_zone(mask):
+            if np.sum(mask) == 0:
+                return
+
+            src_vals = src_lab[mask]
+            ref_vals = ref_lab[mask]
+
+            src_mean = np.mean(src_vals, axis=0)
+            ref_mean = np.mean(ref_vals, axis=0)
+
+            src_std = np.std(src_vals, axis=0)
+            ref_std = np.std(ref_vals, axis=0)
+
+            src_std = np.where(src_std == 0, 1, src_std)
+
+            result_lab[mask] = (src_vals - src_mean) * (ref_std / src_std) + ref_mean
+
+        # Apply zones
+        match_zone(shadow_mask)
+        match_zone(mid_mask)
+        match_zone(highlight_mask)
+
+        result_lab = np.clip(result_lab, 0, 255).astype(np.uint8)
 
         # ===============================
-# ADVANCED COLOR MATCH (STD + MEAN)
-# ===============================
+        # BACK TO BGR
+        # ===============================
 
-ref_std = np.std(ref_lab, axis=(0,1))
-src_std = np.std(src_lab, axis=(0,1))
+        result_bgr = cv2.cvtColor(result_lab, cv2.COLOR_LAB2BGR)
 
-# Avoid divide by zero
-src_std = np.where(src_std == 0, 1, src_std)
+        # ===============================
+        # CALCULATE SLIDERS (SMART)
+        # ===============================
 
-# Apply color transfer
-result_lab = (src_lab - src_mean) * (ref_std / src_std) + ref_mean
+        ref_mean = cv2.mean(ref_img)[:3]
+        src_mean = cv2.mean(src_img)[:3]
 
-# Clip values
-result_lab = np.clip(result_lab, 0, 255).astype(np.uint8)
+        exposure = (ref_mean[0] - src_mean[0]) * 0.6
+        contrast = (ref_mean[1] - src_mean[1]) * 0.5
+        saturation = (ref_mean[2] - src_mean[2]) * 0.5
 
-# ===============================
-# CALCULATE SLIDERS FROM RESULT
-# ===============================
-
-diff = cv2.mean(result_lab.astype(np.float32) - src_lab.astype(np.float32))
-
-exposure = diff[0] * 0.4
-contrast = diff[1] * 0.3
-saturation = diff[2] * 0.3
+        # Slight boost for cinematic feel
+        exposure *= 1.1
+        contrast *= 1.2
+        saturation *= 1.1
 
         sliders = {
             "exposure": float(exposure),
@@ -91,7 +116,7 @@ saturation = diff[2] * 0.3
         }
 
         # ===============================
-        # RETURN RESULT
+        # RETURN FINAL
         # ===============================
 
         return {
