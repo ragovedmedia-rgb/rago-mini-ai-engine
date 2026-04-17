@@ -3,6 +3,12 @@ import cv2
 import numpy as np
 
 
+def decode_image(base64_string):
+    img_data = base64.b64decode(base64_string.split(",")[1])
+    np_arr = np.frombuffer(img_data, np.uint8)
+    return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+
+
 def run(data):
 
     reference = data.get("reference")
@@ -16,18 +22,8 @@ def run(data):
 
     try:
 
-        # ===============================
-        # DECODE BASE64 IMAGES
-        # ===============================
-
-        ref_bytes = base64.b64decode(reference.split(",")[1])
-        src_bytes = base64.b64decode(source.split(",")[1])
-
-        ref_np = np.frombuffer(ref_bytes, np.uint8)
-        src_np = np.frombuffer(src_bytes, np.uint8)
-
-        ref_img = cv2.imdecode(ref_np, cv2.IMREAD_COLOR)
-        src_img = cv2.imdecode(src_np, cv2.IMREAD_COLOR)
+        ref_img = decode_image(reference)
+        src_img = decode_image(source)
 
         if ref_img is None or src_img is None:
             return {
@@ -36,52 +32,34 @@ def run(data):
             }
 
         # ===============================
-        # MATCH SIZE (CRITICAL FIX)
+        # MATCH SIZE
         # ===============================
 
         h, w = src_img.shape[:2]
         ref_img = cv2.resize(ref_img, (w, h))
 
         # ===============================
-        # CONVERT TO LAB
+        # LAB CONVERSION
         # ===============================
 
-        ref_lab = cv2.cvtColor(ref_img, cv2.COLOR_BGR2LAB)
-        src_lab = cv2.cvtColor(src_img, cv2.COLOR_BGR2LAB)
+        ref_lab = cv2.cvtColor(ref_img, cv2.COLOR_BGR2LAB).astype(np.float32)
+        src_lab = cv2.cvtColor(src_img, cv2.COLOR_BGR2LAB).astype(np.float32)
 
         # ===============================
-        # SPLIT LUMA ZONES (🔥 MAIN FIX)
+        # FULL IMAGE COLOR TRANSFER (FIXED)
         # ===============================
 
-        src_l = src_lab[:, :, 0]
+        ref_mean, ref_std = cv2.meanStdDev(ref_lab)
+        src_mean, src_std = cv2.meanStdDev(src_lab)
 
-        shadow_mask = src_l < 85
-        mid_mask = (src_l >= 85) & (src_l <= 170)
-        highlight_mask = src_l > 170
+        ref_mean = ref_mean.flatten()
+        ref_std = ref_std.flatten()
+        src_mean = src_mean.flatten()
+        src_std = src_std.flatten()
 
-        result_lab = src_lab.copy().astype(np.float32)
+        src_std = np.where(src_std == 0, 1, src_std)
 
-        def match_zone(mask):
-            if np.sum(mask) == 0:
-                return
-
-            src_vals = src_lab[mask]
-            ref_vals = ref_lab[mask]
-
-            src_mean = np.mean(src_vals, axis=0)
-            ref_mean = np.mean(ref_vals, axis=0)
-
-            src_std = np.std(src_vals, axis=0)
-            ref_std = np.std(ref_vals, axis=0)
-
-            src_std = np.where(src_std == 0, 1, src_std)
-
-            result_lab[mask] = (src_vals - src_mean) * (ref_std / src_std) + ref_mean
-
-        # Apply zones
-        match_zone(shadow_mask)
-        match_zone(mid_mask)
-        match_zone(highlight_mask)
+        result_lab = (src_lab - src_mean) * (ref_std / src_std) + ref_mean
 
         result_lab = np.clip(result_lab, 0, 255).astype(np.uint8)
 
@@ -92,32 +70,26 @@ def run(data):
         result_bgr = cv2.cvtColor(result_lab, cv2.COLOR_LAB2BGR)
 
         # ===============================
-        # CALCULATE SLIDERS (SMART)
+        # SLIDER CALCULATION (BASED ON RESULT)
         # ===============================
 
-        ref_mean = cv2.mean(ref_img)[:3]
-        src_mean = cv2.mean(src_img)[:3]
+        diff = cv2.mean(result_bgr.astype(np.float32) - src_img.astype(np.float32))
 
-        exposure = (ref_mean[0] - src_mean[0]) * 0.6
-        contrast = (ref_mean[1] - src_mean[1]) * 0.5
-        saturation = (ref_mean[2] - src_mean[2]) * 0.5
+        exposure = diff[0] * 0.6
+        contrast = diff[1] * 0.6
+        saturation = diff[2] * 0.6
 
-        # Slight boost for cinematic feel
-        exposure *= 1.1
-        contrast *= 1.2
-        saturation *= 1.1
+        # Cinematic boost
+        contrast *= 1.3
+        saturation *= 1.2
 
         sliders = {
             "exposure": float(exposure),
             "contrast": float(contrast),
             "saturation": float(saturation),
-            "temperature": 0.0,
-            "tint": 0.0
+            "temperature": float((diff[2] - diff[0]) * 0.2),
+            "tint": float((diff[1] - diff[2]) * 0.2)
         }
-
-        # ===============================
-        # RETURN FINAL
-        # ===============================
 
         return {
             "success": True,
