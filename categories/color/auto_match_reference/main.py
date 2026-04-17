@@ -70,17 +70,18 @@ def run(data):
         # (Reference look → Source image)
         # ----------------------------------------
 
-        try:
-            matched_img = color_transfer(reference, source)
+       # ========================================
+# TEMP DISABLE COLOR TRANSFER (FIX)
+# ========================================
 
-            # color_transfer may return normalized image
-            if matched_img is not None:
-                src_img = matched_img
-
-        except Exception:
-            # If transfer fails, continue with original image
-            pass
-
+# try:
+#     matched_img = color_transfer(reference, source)
+#
+#     if matched_img is not None:
+#         src_img = matched_img
+#
+# except Exception:
+#     pass
         # ----------------------------------------
         # 5. Analyze images (color statistics)
         # ----------------------------------------
