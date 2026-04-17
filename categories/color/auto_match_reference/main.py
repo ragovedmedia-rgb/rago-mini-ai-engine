@@ -27,6 +27,9 @@ from .slider_solver import build_sliders
 from .color_wheel_solver import solve_color_wheels
 
 
+from .histogram_match import histogram_match
+from .zone_harmony import zone_harmony
+
 def run(data):
 
     try:
@@ -64,6 +67,10 @@ def run(data):
 
         ref_img = prepare_for_analysis(ref_img)
         src_img = prepare_for_analysis(src_img)
+
+        matched = histogram_match(src_img, ref_img)
+        src_img = zone_harmony(matched, ref_img)
+        
 
         # ----------------------------------------
         # 4. Apply color transfer
