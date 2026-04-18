@@ -65,11 +65,13 @@ def run(data):
         # (Log/Gamma → Linear normalization)
         # ----------------------------------------
 
-        ref_img = prepare_for_analysis(ref_img)
-        src_img = prepare_for_analysis(src_img)
-
+       # STEP 1: match in normal space (0–255)
         matched = histogram_match(src_img, ref_img)
         src_img = zone_harmony(matched, ref_img)
+
+        # STEP 2: convert for analysis (linear)
+        ref_img = prepare_for_analysis(ref_img)
+        src_img = prepare_for_analysis(src_img)
         
 
         # ----------------------------------------
