@@ -70,6 +70,9 @@ def run(data):
 
         # STEP 2: final grading
         src_img = zone_harmony(matched, ref_img)
+
+        ref_img = prepare_for_analysis(ref_img)
+        src_img = prepare_for_analysis(src_img)
        
 
         # ----------------------------------------
