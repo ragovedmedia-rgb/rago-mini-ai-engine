@@ -26,7 +26,6 @@ import cv2
 
 
 def run(data):
-
     try:
 
         # ----------------------------------------
@@ -104,7 +103,7 @@ def run(data):
             response["palette"] = palette_data
 
         # ----------------------------------------
-        # 🔥 IMAGE OUTPUT (CRITICAL FIX)
+        # 8. IMAGE OUTPUT
         # ----------------------------------------
         success, buffer = cv2.imencode('.jpg', final_img)
 
@@ -115,13 +114,12 @@ def run(data):
             }
 
         img_base64 = base64.b64encode(buffer).decode('utf-8')
-
         response["image"] = f"data:image/jpeg;base64,{img_base64}"
 
         return response
 
     # ----------------------------------------
-    # ERROR HANDLER (FINAL FIX)
+    # ERROR HANDLER
     # ----------------------------------------
     except Exception as e:
         return {
