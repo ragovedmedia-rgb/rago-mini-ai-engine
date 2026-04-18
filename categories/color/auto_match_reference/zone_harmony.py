@@ -3,14 +3,39 @@ import numpy as np
 
 def zone_harmony(src_img, ref_img):
 
+    # ===============================
+    # SAFETY CONVERSION
+    # ===============================
     src = src_img.astype("float32")
     ref = ref_img.astype("float32")
 
     # ===============================
-    # LUMINANCE CALCULATION
+    # LUMINANCE
     # ===============================
     src_luma = 0.2126 * src[:, :, 2] + 0.7152 * src[:, :, 1] + 0.0722 * src[:, :, 0]
     ref_luma = 0.2126 * ref[:, :, 2] + 0.7152 * ref[:, :, 1] + 0.0722 * ref[:, :, 0]
+
+    # ===============================
+    # 1. BLACK LEVEL
+    # ===============================
+    src_black = np.percentile(src_luma, 2)
+    ref_black = np.percentile(ref_luma, 2)
+
+    src = src - src_black + ref_black
+
+    # ===============================
+    # 2. WHITE LEVEL
+    # ===============================
+    src_white = np.percentile(src_luma, 98)
+    ref_white = np.percentile(ref_luma, 98)
+
+    scale = (ref_white - ref_black) / (src_white - src_black + 1e-6)
+    src = (src - ref_black) * scale + ref_black
+
+    # ===============================
+    # RE-CALCULATE LUMINANCE (IMPORTANT)
+    # ===============================
+    src_luma = 0.2126 * src[:, :, 2] + 0.7152 * src[:, :, 1] + 0.0722 * src[:, :, 0]
 
     # ===============================
     # SOURCE ZONES
@@ -23,7 +48,7 @@ def zone_harmony(src_img, ref_img):
     high_mask = src_luma > s_high
 
     # ===============================
-    # REFERENCE ZONES (🔥 FIXED)
+    # REFERENCE ZONES
     # ===============================
     r_low = np.percentile(ref_luma, 25)
     r_high = np.percentile(ref_luma, 75)
@@ -52,9 +77,9 @@ def zone_harmony(src_img, ref_img):
     ref_high = avg(ref, ref_high_mask)
 
     # ===============================
-    # APPLY SHIFTS (balanced)
+    # APPLY SHIFTS
     # ===============================
-    shadow_shift = (ref_shadow - src_shadow) * 0.8
+    shadow_shift = (ref_shadow - src_shadow) * 0.7
     mid_shift = (ref_mid - src_mid) * 0.5
     high_shift = (ref_high - src_high) * 0.3
 
@@ -63,7 +88,7 @@ def zone_harmony(src_img, ref_img):
     src[high_mask] += high_shift
 
     # ===============================
-    # GAMMA CORRECTION (stable)
+    # GAMMA CORRECTION
     # ===============================
     src_luma_new = 0.2126 * src[:, :, 2] + 0.7152 * src[:, :, 1] + 0.0722 * src[:, :, 0]
 
