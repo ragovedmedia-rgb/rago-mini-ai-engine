@@ -78,6 +78,14 @@ def run(data):
         result_bgr = cv2.cvtColor(result_lab, cv2.COLOR_LAB2BGR)
 
         # ===============================
+        # IMAGE OUTPUT ADD
+        # ===============================
+        _, buffer = cv2.imencode('.jpg', result_bgr)
+        img_base64 = base64.b64encode(buffer).decode('utf-8')
+
+        image_output = f"data:image/jpeg;base64,{img_base64}"
+
+        # ===============================
         # 🎯 BETTER SLIDER CALCULATION
         # ===============================
 
@@ -118,8 +126,9 @@ def run(data):
         }
 
         return {
-            "success": True,
-            "sliders": sliders
+    "success": True,
+    "sliders": sliders,
+    "image": image_output
         }
 
     except Exception as e:
