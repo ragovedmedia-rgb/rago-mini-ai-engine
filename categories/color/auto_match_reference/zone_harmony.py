@@ -20,19 +20,19 @@ def zone_harmony(src_img, ref_img):
     # ===============================
     # TEMPERATURE (B channel)
     # ===============================
-    temp_shift = np.mean(ref_lab[:,:,2] - base_lab[:,:,2]) * 0.3
+    temp_shift = np.mean(ref_lab[:,:,2] - base_lab[:,:,2]) * 0.6
     base_lab[:,:,2] += temp_shift
 
     # ===============================
     # TINT (A channel)
     # ===============================
-    tint_shift = np.mean(ref_lab[:,:,1] - base_lab[:,:,1]) * 0.3
+    tint_shift = np.mean(ref_lab[:,:,1] - base_lab[:,:,1]) * 0.5
     base_lab[:,:,1] += tint_shift
 
     # ===============================
     # SATURATION
     # ===============================
-    base_lab[:,:,1:3] = (base_lab[:,:,1:3] - 128) * 1.05 + 128
+    base_lab[:,:,1:3] = (base_lab[:,:,1:3] - 128) * 1.25 + 128
 
     # ===============================
     # BACK TO BGR
