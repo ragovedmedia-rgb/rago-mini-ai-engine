@@ -1,4 +1,4 @@
-print("🔥 NEW MAIN.PY RUNNING")
+print("🔥🔥🔥 MAIN FILE LIVE 🔥🔥🔥")
 
 # ----------------------------------------
 # RAGO AI - AUTO MATCH ENGINE
