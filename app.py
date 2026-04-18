@@ -8,12 +8,7 @@ app = Flask(__name__)
 # ===============================
 # CORS (CRITICAL FOR FRONTEND)
 # ===============================
-CORS(
-    app,
-    resources={r"/*": {"origins": "*"}},
-    supports_credentials=True
-)
-
+CORS(app)
 
 # ===============================
 # HEALTH CHECK
