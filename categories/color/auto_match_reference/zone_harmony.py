@@ -1,3 +1,5 @@
+
+print("🔥 ZONE HARMONY NEW VERSION RUNNING")
 import numpy as np
 from .basegrade import apply_basegrade
 
