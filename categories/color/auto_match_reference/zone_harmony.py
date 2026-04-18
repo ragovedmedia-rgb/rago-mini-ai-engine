@@ -46,7 +46,7 @@ def zone_harmony(src_img, ref_img):
     ref_mid = np.median(ref_luma)
     src_mid = np.median(src_luma_new)
 
-    gamma = ref_mid / (src_mid + 1e-6)
+    gamma = np.clip(ref_mid / (src_mid + 1e-6), 0.8, 1.2)
 
     src = np.power(src/255.0, gamma) * 255.0
 
