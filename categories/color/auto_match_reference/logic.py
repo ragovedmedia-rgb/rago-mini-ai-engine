@@ -1,51 +1,36 @@
-print("🔥 LOGIC FILE RUNNING")
-
-# ----------------------------------------
-# RAGO AI - AUTO MATCH ENGINE
-# ----------------------------------------
-
-from .utils import decode_base64_image
-from .log_linear import prepare_for_analysis
-
-from .analyzer_reference import analyze_reference
-from .analyzer_source import analyze_source
-
-from .level_match import solve_levels
-from .color_match import solve_color
-from .tone_match import solve_tone
-from .palette_match import solve_palette
-
-from .slider_solver import build_sliders
-from .color_wheel_solver import solve_color_wheels
-
-from .histogram_match import histogram_match
-from .zone_harmony import zone_harmony
-
 import base64
 import cv2
+import numpy as np
+
+
+def decode_image(base64_string):
+    try:
+        img_data = base64.b64decode(base64_string.split(",")[1])
+        np_arr = np.frombuffer(img_data, np.uint8)
+        return cv2.imdecode(np_arr, cv2.IMREAD_COLOR)
+    except Exception:
+        return None
 
 
 def run(data):
 
+    reference = data.get("reference")
+    source = data.get("source")
+
+    if not reference or not source:
+        return {
+            "success": False,
+            "error": "Missing reference or source image"
+        }
+
     try:
 
-        # ----------------------------------------
-        # 1. INPUT
-        # ----------------------------------------
-        reference = data.get("reference")
-        source = data.get("source")
+        # ===============================
+        # DECODE IMAGES
+        # ===============================
 
-        if not reference or not source:
-            return {
-                "success": False,
-                "error": "Missing reference or source frame"
-            }
-
-        # ----------------------------------------
-        # 2. DECODE
-        # ----------------------------------------
-        ref_img = decode_base64_image(reference)
-        src_img = decode_base64_image(source)
+        ref_img = decode_image(reference)
+        src_img = decode_image(source)
 
         if ref_img is None or src_img is None:
             return {
@@ -53,76 +38,99 @@ def run(data):
                 "error": "Image decode failed"
             }
 
-        # ----------------------------------------
-        # 3. MATCHING (VISIBLE OUTPUT)
-        # ----------------------------------------
-        matched = histogram_match(src_img, ref_img)
-        graded = zone_harmony(matched, ref_img)
+        # ===============================
+        # MATCH SIZE
+        # ===============================
 
-        final_img = graded.copy()
+        h, w = src_img.shape[:2]
+        ref_img = cv2.resize(ref_img, (w, h))
 
-        # ----------------------------------------
-        # 4. ANALYSIS (LINEAR SPACE)
-        # ----------------------------------------
-        ref_linear = prepare_for_analysis(ref_img)
-        src_linear = prepare_for_analysis(final_img)
+        # ===============================
+        # LAB CONVERSION
+        # ===============================
 
-        # ----------------------------------------
-        # 5. ANALYZE
-        # ----------------------------------------
-        ref_stats = analyze_reference(ref_linear)
-        src_stats = analyze_source(src_linear)
+        ref_lab = cv2.cvtColor(ref_img, cv2.COLOR_BGR2LAB).astype(np.float32)
+        src_lab = cv2.cvtColor(src_img, cv2.COLOR_BGR2LAB).astype(np.float32)
 
-        # ----------------------------------------
-        # 6. SOLVE
-        # ----------------------------------------
-        level_data = solve_levels(ref_stats, src_stats)
-        color_data = solve_color(ref_linear, src_linear)
-        tone_data = solve_tone(ref_linear, src_linear)
-        palette_data = solve_palette(ref_linear, src_linear)
+        # ===============================
+        # COLOR TRANSFER (MEAN + STD)
+        # ===============================
 
-        sliders = build_sliders(ref_stats, src_stats, palette_data)
-        wheels = solve_color_wheels(ref_linear, src_linear)
+        ref_mean, ref_std = cv2.meanStdDev(ref_lab)
+        src_mean, src_std = cv2.meanStdDev(src_lab)
 
-        # ----------------------------------------
-        # 7. RESPONSE
-        # ----------------------------------------
-        debug_mode = data.get("debug", False)
+        ref_mean = ref_mean.flatten()
+        ref_std = ref_std.flatten()
+        src_mean = src_mean.flatten()
+        src_std = src_std.flatten()
 
-        response = {
-            "success": True,
-            "sliders": sliders,
-            "wheels": wheels
-        }
+        # avoid divide by zero
+        src_std = np.where(src_std == 0, 1, src_std)
 
-        if debug_mode:
-            response["reference_stats"] = ref_stats
-            response["source_stats"] = src_stats
-            response["levels"] = level_data
-            response["color"] = color_data
-            response["tone"] = tone_data
-            response["palette"] = palette_data
+        # transfer
+        result_lab = (src_lab - src_mean) * (ref_std / src_std) + ref_mean
+        result_lab = np.clip(result_lab, 0, 255).astype(np.uint8)
 
-        # ----------------------------------------
-        # 🔥 IMAGE OUTPUT (CRITICAL FIX)
-        # ----------------------------------------
-        success, buffer = cv2.imencode('.jpg', final_img)
+        # ===============================
+        # BACK TO BGR
+        # ===============================
 
-        if not success:
-            return {
-                "success": False,
-                "error": "Image encoding failed"
-            }
+        result_bgr = cv2.cvtColor(result_lab, cv2.COLOR_LAB2BGR)
 
+        # ===============================
+        # IMAGE OUTPUT ADD
+        # ===============================
+        _, buffer = cv2.imencode('.jpg', result_bgr)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
-        response["image"] = f"data:image/jpeg;base64,{img_base64}"
+        image_output = f"data:image/jpeg;base64,{img_base64}"
 
-        return response
+        # ===============================
+        # 🎯 BETTER SLIDER CALCULATION
+        # ===============================
 
-    # ----------------------------------------
-    # ERROR HANDLER (FINAL FIX)
-    # ----------------------------------------
+        # Luminance (brightness)
+        ref_l = ref_lab[:, :, 0]
+        src_l = src_lab[:, :, 0]
+
+        exposure = np.mean(ref_l - src_l) * 0.8
+
+        # Contrast (std difference)
+        contrast = (np.std(ref_l) - np.std(src_l)) * 1.5
+
+        # Saturation (color channels spread)
+        ref_ab = ref_lab[:, :, 1:3]
+        src_ab = src_lab[:, :, 1:3]
+
+        sat_ref = np.std(ref_ab)
+        sat_src = np.std(src_ab)
+
+        saturation = (sat_ref - sat_src) * 1.2
+
+        # Temperature (blue-yellow axis)
+        temperature = np.mean(ref_lab[:, :, 2] - src_lab[:, :, 2]) * 0.3
+
+        # Tint (green-magenta axis)
+        tint = np.mean(ref_lab[:, :, 1] - src_lab[:, :, 1]) * 0.3
+
+        # ===============================
+        # FINAL NORMALIZATION (IMPORTANT)
+        # ===============================
+
+        sliders = {
+            "exposure": float(np.clip(exposure, -100, 100)),
+            "contrast": float(np.clip(contrast, -100, 100)),
+            "saturation": float(np.clip(saturation, -100, 100)),
+            "temperature": float(np.clip(temperature, -100, 100)),
+            "tint": float(np.clip(tint, -100, 100))
+        }
+
+        return {
+    "success": True,
+    "sliders": sliders,
+    "image": image_output
+        }
+
     except Exception as e:
         return {
             "success": False,
