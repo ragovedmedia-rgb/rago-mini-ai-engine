@@ -26,9 +26,13 @@ from .palette_match import solve_palette
 from .slider_solver import build_sliders
 from .color_wheel_solver import solve_color_wheels
 
-
+# Matching modules
 from .histogram_match import histogram_match
 from .zone_harmony import zone_harmony
+
+import base64
+import cv2
+
 
 def run(data):
 
@@ -61,82 +65,47 @@ def run(data):
             }
 
         # ----------------------------------------
-        # 3. Convert images to linear light
-        # (Log/Gamma → Linear normalization)
+        # 3. MATCHING PIPELINE (REAL MAGIC)
         # ----------------------------------------
 
-       # STEP 1: histogram match (tone base)
+        # STEP 1: histogram match (tone base)
         matched = histogram_match(src_img, ref_img)
 
-        # STEP 2: final grading
-        src_img = zone_harmony(matched, ref_img)
-
-        ref_img = prepare_for_analysis(ref_img)
-        src_img = prepare_for_analysis(src_img)
-       
+        # STEP 2: zone harmony (color + tone refine)
+        graded = zone_harmony(matched, ref_img)
 
         # ----------------------------------------
-        # 4. Apply color transfer
-        # (Reference look → Source image)
+        # 4. ANALYSIS SPACE (LINEAR)
         # ----------------------------------------
 
-       # ========================================
-# TEMP DISABLE COLOR TRANSFER (FIX)
-# ========================================
-
-# try:
-#     matched_img = color_transfer(reference, source)
-#
-#     if matched_img is not None:
-#         src_img = matched_img
-#
-# except Exception:
-#     pass
-        # ----------------------------------------
-        # 5. Analyze images (color statistics)
-        # ----------------------------------------
-
-        ref_stats = analyze_reference(ref_img)
-        src_stats = analyze_source(src_img)
+        ref_linear = prepare_for_analysis(ref_img)
+        src_linear = prepare_for_analysis(graded)
 
         # ----------------------------------------
-        # 6. Solve level differences
+        # 5. ANALYZE
+        # ----------------------------------------
+
+        ref_stats = analyze_reference(ref_linear)
+        src_stats = analyze_source(src_linear)
+
+        # ----------------------------------------
+        # 6. SOLVERS
         # ----------------------------------------
 
         level_data = solve_levels(ref_stats, src_stats)
+        color_data = solve_color(ref_linear, src_linear)
+        tone_data = solve_tone(ref_linear, src_linear)
+        palette_data = solve_palette(ref_linear, src_linear)
 
         # ----------------------------------------
-        # 7. Solve color differences
-        # ----------------------------------------
-
-        color_data = solve_color(ref_img, src_img)
-
-        # ----------------------------------------
-        # 8. Solve tone differences
-        # ----------------------------------------
-
-        tone_data = solve_tone(ref_img, src_img)
-
-        # ----------------------------------------
-        # 9. Palette harmony match
-        # ----------------------------------------
-
-        palette_data = solve_palette(ref_img, src_img)
-
-        # ----------------------------------------
-        # 10. Build grading sliders
+        # 7. BUILD OUTPUT
         # ----------------------------------------
 
         sliders = build_sliders(ref_stats, src_stats, palette_data)
+        wheels = solve_color_wheels(ref_linear, src_linear)
 
         # ----------------------------------------
-        # 11. Solve Lift / Gamma / Gain wheels
-        # ----------------------------------------
-
-        wheels = solve_color_wheels(ref_img, src_img)
-
-        # ----------------------------------------
-        # 12. Return final grading data
+        # 8. RESPONSE BASE
         # ----------------------------------------
 
         debug_mode = data.get("debug", False)
@@ -147,7 +116,7 @@ def run(data):
             "wheels": wheels
         }
 
-        # Debug mode: include analysis stats
+        # Debug info (optional)
         if debug_mode:
             response["reference_stats"] = ref_stats
             response["source_stats"] = src_stats
@@ -156,18 +125,16 @@ def run(data):
             response["tone"] = tone_data
             response["palette"] = palette_data
 
-            import base64
-            import cv2
-            # 🔥 IMAGE OUTPUT
-            _, buffer = cv2.imencode('.jpg', src_img)
-            img_base64 = base64.b64encode(buffer).decode('utf-8')
-            image_output = f"data:image/jpeg;base64,{img_base64}"
+        # ----------------------------------------
+        # 9. 🔥 FINAL IMAGE OUTPUT (IMPORTANT)
+        # ----------------------------------------
 
-            response["image"] = image_output
+        _, buffer = cv2.imencode('.jpg', graded)
+        img_base64 = base64.b64encode(buffer).decode('utf-8')
 
-            return response
+        response["image"] = f"data:image/jpeg;base64,{img_base64}"
 
-
+        return response
 
     # ----------------------------------------
     # Global safety catch
@@ -179,6 +146,3 @@ def run(data):
             "success": False,
             "error": str(e)
         }
-
-
-
