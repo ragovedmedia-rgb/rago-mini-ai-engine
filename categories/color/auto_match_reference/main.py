@@ -1,6 +1,5 @@
 print("🔥 NEW MAIN.PY RUNNING")
 
-
 # ----------------------------------------
 # RAGO AI - AUTO MATCH ENGINE
 # ----------------------------------------
@@ -58,10 +57,8 @@ def run(data):
         # 3. MATCHING (VISIBLE OUTPUT)
         # ----------------------------------------
         matched = histogram_match(src_img, ref_img)
-
         graded = zone_harmony(matched, ref_img)
 
-        # 👉 keep final image separate
         final_img = graded.copy()
 
         # ----------------------------------------
@@ -98,7 +95,6 @@ def run(data):
             "wheels": wheels
         }
 
-        # Debug info
         if debug_mode:
             response["reference_stats"] = ref_stats
             response["source_stats"] = src_stats
@@ -108,9 +104,16 @@ def run(data):
             response["palette"] = palette_data
 
         # ----------------------------------------
-        # 🔥 ALWAYS RETURN IMAGE (FIXED)
+        # 🔥 IMAGE OUTPUT (CRITICAL FIX)
         # ----------------------------------------
-        _, buffer = cv2.imencode('.jpg', final_img)
+        success, buffer = cv2.imencode('.jpg', final_img)
+
+        if not success:
+            return {
+                "success": False,
+                "error": "Image encoding failed"
+            }
+
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
         response["image"] = f"data:image/jpeg;base64,{img_base64}"
@@ -118,7 +121,7 @@ def run(data):
         return response
 
     # ----------------------------------------
-    # ERROR HANDLER
+    # ERROR HANDLER (FINAL FIX)
     # ----------------------------------------
     except Exception as e:
         return {
