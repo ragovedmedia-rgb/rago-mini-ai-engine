@@ -31,8 +31,10 @@ def run(data):
         # ----------------------------------------
         # 1. INPUT
         # ----------------------------------------
-        reference = data.get("reference")
-        source = data.get("source")
+        payload = data.get("data", data)
+
+        reference = payload.get("reference")
+        source = payload.get("source")
 
         if not reference or not source:
             return {
