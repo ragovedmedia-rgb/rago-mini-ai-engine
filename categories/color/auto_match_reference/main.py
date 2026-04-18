@@ -1,32 +1,21 @@
 # ----------------------------------------
 # RAGO AI - AUTO MATCH ENGINE
-# Main entry point for auto_match_reference
 # ----------------------------------------
 
-# Image decode helper
 from .utils import decode_base64_image
-
-# Log → Linear conversion
 from .log_linear import prepare_for_analysis
 
-# Color transfer (look matching)
-from .color_transfer import color_transfer
-
-# Image analyzers
 from .analyzer_reference import analyze_reference
 from .analyzer_source import analyze_source
 
-# Solvers
 from .level_match import solve_levels
 from .color_match import solve_color
 from .tone_match import solve_tone
 from .palette_match import solve_palette
 
-# Slider & wheel builders
 from .slider_solver import build_sliders
 from .color_wheel_solver import solve_color_wheels
 
-# Matching modules
 from .histogram_match import histogram_match
 from .zone_harmony import zone_harmony
 
@@ -39,9 +28,8 @@ def run(data):
     try:
 
         # ----------------------------------------
-        # 1. Get reference and source images
+        # 1. INPUT
         # ----------------------------------------
-
         reference = data.get("reference")
         source = data.get("source")
 
@@ -52,9 +40,8 @@ def run(data):
             }
 
         # ----------------------------------------
-        # 2. Decode Base64 images → numpy arrays
+        # 2. DECODE
         # ----------------------------------------
-
         ref_img = decode_base64_image(reference)
         src_img = decode_base64_image(source)
 
@@ -65,49 +52,41 @@ def run(data):
             }
 
         # ----------------------------------------
-        # 3. MATCHING PIPELINE (REAL MAGIC)
+        # 3. MATCHING (VISIBLE OUTPUT)
         # ----------------------------------------
-
-        # STEP 1: histogram match (tone base)
         matched = histogram_match(src_img, ref_img)
 
-        # STEP 2: zone harmony (color + tone refine)
         graded = zone_harmony(matched, ref_img)
 
-        # ----------------------------------------
-        # 4. ANALYSIS SPACE (LINEAR)
-        # ----------------------------------------
+        # 👉 keep final image separate
+        final_img = graded.copy()
 
+        # ----------------------------------------
+        # 4. ANALYSIS (LINEAR SPACE)
+        # ----------------------------------------
         ref_linear = prepare_for_analysis(ref_img)
-        src_linear = prepare_for_analysis(graded)
+        src_linear = prepare_for_analysis(final_img)
 
         # ----------------------------------------
         # 5. ANALYZE
         # ----------------------------------------
-
         ref_stats = analyze_reference(ref_linear)
         src_stats = analyze_source(src_linear)
 
         # ----------------------------------------
-        # 6. SOLVERS
+        # 6. SOLVE
         # ----------------------------------------
-
         level_data = solve_levels(ref_stats, src_stats)
         color_data = solve_color(ref_linear, src_linear)
         tone_data = solve_tone(ref_linear, src_linear)
         palette_data = solve_palette(ref_linear, src_linear)
 
-        # ----------------------------------------
-        # 7. BUILD OUTPUT
-        # ----------------------------------------
-
         sliders = build_sliders(ref_stats, src_stats, palette_data)
         wheels = solve_color_wheels(ref_linear, src_linear)
 
         # ----------------------------------------
-        # 8. RESPONSE BASE
+        # 7. RESPONSE
         # ----------------------------------------
-
         debug_mode = data.get("debug", False)
 
         response = {
@@ -116,7 +95,7 @@ def run(data):
             "wheels": wheels
         }
 
-        # Debug info (optional)
+        # Debug info
         if debug_mode:
             response["reference_stats"] = ref_stats
             response["source_stats"] = src_stats
@@ -126,10 +105,9 @@ def run(data):
             response["palette"] = palette_data
 
         # ----------------------------------------
-        # 9. 🔥 FINAL IMAGE OUTPUT (IMPORTANT)
+        # 🔥 ALWAYS RETURN IMAGE (FIXED)
         # ----------------------------------------
-
-        _, buffer = cv2.imencode('.jpg', graded)
+        _, buffer = cv2.imencode('.jpg', final_img)
         img_base64 = base64.b64encode(buffer).decode('utf-8')
 
         response["image"] = f"data:image/jpeg;base64,{img_base64}"
@@ -137,11 +115,9 @@ def run(data):
         return response
 
     # ----------------------------------------
-    # Global safety catch
+    # ERROR HANDLER
     # ----------------------------------------
-
     except Exception as e:
-
         return {
             "success": False,
             "error": str(e)
