@@ -153,6 +153,15 @@ def run(data):
             response["tone"] = tone_data
             response["palette"] = palette_data
 
+# ✅ ADD HERE
+_, buffer = cv2.imencode('.jpg', src_img)
+img_base64 = base64.b64encode(buffer).decode('utf-8')
+
+image_output = f"data:image/jpeg;base64,{img_base64}"
+
+response["image"] = image_output
+
+        
         return response
 
     # ----------------------------------------
@@ -165,3 +174,6 @@ def run(data):
             "success": False,
             "error": str(e)
         }
+
+
+
