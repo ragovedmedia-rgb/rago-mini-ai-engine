@@ -7,6 +7,9 @@ print("🔥 WHICH FILE IS RUNNING:", __file__)
 from .utils import decode_base64_image
 from .log_linear import prepare_for_analysis
 
+from .basegrade import apply_basegrade
+from .lab_match import lab_match
+
 from .analyzer_reference import analyze_reference
 from .analyzer_source import analyze_source
 
@@ -57,10 +60,24 @@ def run(data):
         # ----------------------------------------
         # 3. MATCHING (VISIBLE OUTPUT)
         # ----------------------------------------
-        matched = histogram_match(src_img, ref_img)
+        
+        print("🔥 BASE PIPELINE START")
+        
+        # Step 1: Base grade (brightness/contrast)
+        base = apply_basegrade(src_img, ref_img)
+        
+        # Step 2: Histogram match
+        matched = histogram_match(base, ref_img)
+        
+        # Step 3: LAB refinement
+        matched = lab_match(matched, ref_img, strength=0.6)
+        
+        # Step 4: Zone harmony (final polish)
         graded = zone_harmony(matched, ref_img)
-
+        
         final_img = graded.copy()
+        
+        print("🔥 BASE PIPELINE END")
 
         # ----------------------------------------
         # 4. ANALYSIS (LINEAR SPACE)
