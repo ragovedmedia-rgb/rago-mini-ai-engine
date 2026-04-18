@@ -33,6 +33,8 @@ def histogram_match(src_img, ref_img):
     for i in range(256):
         lookup[i] = np.argmin(np.abs(ref_cdf - src_cdf[i]))
 
+    lookup = lookup * 0.85 + np.arange(256) * 0.15
+
     matched = cv2.LUT(src_y.astype("uint8"), lookup.astype("uint8"))
 
     src_yuv[:,:,0] = matched
