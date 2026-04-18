@@ -53,6 +53,20 @@ def zone_harmony(src_img, ref_img):
     base_lab[:, :, 1:3] = (base_lab[:, :, 1:3] - 128) * sat_scale + 128
 
     # ===============================
+    # LUMINANCE MATCH (FINAL TOUCH)
+    # ===============================
+    ref_l = ref_lab[:, :, 0]
+    base_l = base_lab[:, :, 0]
+    
+    l_scale = np.mean(ref_l) / (np.mean(base_l) + 1e-6)
+    
+    # safe clamp
+    l_scale = np.clip(l_scale, 0.9, 1.1)
+    
+    base_lab[:, :, 0] = base_lab[:, :, 0] * l_scale
+
+
+    # ===============================
     # 6. FINAL CONVERSION
     # ===============================
     result = cv2.cvtColor(base_lab.astype("uint8"), cv2.COLOR_LAB2BGR)
