@@ -1,4 +1,4 @@
-print("🔥🔥🔥 MAIN FILE LIVE 🔥🔥🔥")
+print("🔥 WHICH FILE IS RUNNING:", __file__)
 
 # ----------------------------------------
 # RAGO AI - AUTO MATCH ENGINE
