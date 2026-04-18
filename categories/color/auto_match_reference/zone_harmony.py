@@ -64,11 +64,13 @@ def zone_harmony(src_img, ref_img):
     l_scale = np.clip(l_scale, 0.9, 1.1)
     
     base_lab[:, :, 0] = base_lab[:, :, 0] * l_scale
+    base_lab[:, :, 0] = np.clip(base_lab[:, :, 0], 0, 255)
 
 
     # ===============================
     # 6. FINAL CONVERSION
     # ===============================
+    base_lab = np.clip(base_lab, 0, 255)
     result = cv2.cvtColor(base_lab.astype("uint8"), cv2.COLOR_LAB2BGR)
 
     return np.clip(result, 0, 255).astype("uint8")
