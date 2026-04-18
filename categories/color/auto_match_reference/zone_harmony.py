@@ -30,9 +30,17 @@ def zone_harmony(src_img, ref_img):
     base_lab[:,:,1] += tint_shift
 
     # ===============================
-    # SATURATION
+    # SATURATION MATCH (REFERENCE BASED)
     # ===============================
-    base_lab[:,:,1:3] = (base_lab[:,:,1:3] - 128) * 1.25 + 128
+    ref_sat = np.std(ref_lab[:,:,1:3])
+    base_sat = np.std(base_lab[:,:,1:3])
+
+    sat_scale = ref_sat / (base_sat + 1e-6)
+
+    # clamp to avoid over boost
+    sat_scale = np.clip(sat_scale, 0.8, 1.3)
+
+    base_lab[:,:,1:3] = (base_lab[:,:,1:3] - 128) * sat_scale + 128
 
     # ===============================
     # BACK TO BGR
