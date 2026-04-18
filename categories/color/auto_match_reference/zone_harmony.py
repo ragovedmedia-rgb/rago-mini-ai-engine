@@ -23,22 +23,43 @@ def zone_harmony(src_img, ref_img):
     base_lab = cv2.cvtColor(base_uint8, cv2.COLOR_BGR2LAB).astype("float32")
     ref_lab  = cv2.cvtColor(ref_uint8, cv2.COLOR_BGR2LAB).astype("float32")
 
-    # ===============================
-    # 3. TEMPERATURE (B channel)
-    # ===============================
-    temp_shift = np.mean(ref_lab[:, :, 2] - base_lab[:, :, 2]) * 0.6
-    temp_shift = np.clip(temp_shift, -20, 20)
+   # ===============================
+# 3. SMART MIDTONE MASK (skin safe)
+# ===============================
+ref_l = ref_lab[:, :, 0]
+base_l = base_lab[:, :, 0]
 
-    base_lab[:, :, 2] += temp_shift
+mask = (ref_l > 80) & (ref_l < 180)
 
-    # ===============================
-    # 4. TINT (A channel)
-    # ===============================
-    tint_shift = np.mean(ref_lab[:, :, 1] - base_lab[:, :, 1]) * 0.5
-    tint_shift = np.clip(tint_shift, -20, 20)
+# ===============================
+# 4. SMART TEMPERATURE (B channel)
+# ===============================
+if np.sum(mask) > 100:
+    ref_temp = np.mean(ref_lab[:, :, 2][mask])
+    base_temp = np.mean(base_lab[:, :, 2][mask])
+else:
+    ref_temp = np.mean(ref_lab[:, :, 2])
+    base_temp = np.mean(base_lab[:, :, 2])
 
-    base_lab[:, :, 1] += tint_shift
+temp_shift = (ref_temp - base_temp) * 0.8
+temp_shift = np.clip(temp_shift, -25, 25)
 
+base_lab[:, :, 2] += temp_shift
+
+# ===============================
+# 5. SMART TINT (A channel)
+# ===============================
+if np.sum(mask) > 100:
+    ref_tint = np.mean(ref_lab[:, :, 1][mask])
+    base_tint = np.mean(base_lab[:, :, 1][mask])
+else:
+    ref_tint = np.mean(ref_lab[:, :, 1])
+    base_tint = np.mean(base_lab[:, :, 1])
+
+tint_shift = (ref_tint - base_tint) * 0.7
+tint_shift = np.clip(tint_shift, -20, 20)
+
+base_lab[:, :, 1] += tint_shift
     # ===============================
     # 5. SATURATION MATCH (REFERENCE BASED)
     # ===============================
